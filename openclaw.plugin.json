@@ -1,0 +1,26 @@
+{
+  "id": "aipg",
+  "name": "AI Power Grid",
+  "description": "AI Power Grid model provider (unofficial, community-built)",
+  "categories": ["models"],
+  "providers": ["aipg"],
+  "setup": {
+    "providers": [{ "id": "aipg", "envVars": ["AIPG_API_KEY"] }]
+  },
+  "providerAuthChoices": [
+    {
+      "provider": "aipg",
+      "method": "api-key",
+      "choiceId": "aipg-api-key",
+      "choiceLabel": "AI Power Grid API key",
+      "groupId": "aipg",
+      "groupLabel": "AI Power Grid",
+      "groupHint": "API key",
+      "optionKey": "aipgApiKey",
+      "cliFlag": "--aipg-api-key",
+      "cliOption": "--aipg-api-key <key>",
+      "cliDescription": "AI Power Grid API key (starts with grid_)"
+    }
+  ],
+  "configSchema": { "type": "object", "additionalProperties": false }
+}
