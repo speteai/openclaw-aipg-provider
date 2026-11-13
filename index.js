@@ -7,9 +7,11 @@
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { createProviderApiKeyAuthMethod } from "openclaw/plugin-sdk/provider-auth";
 import { buildImageProvider } from "./images.js";
+import { fundingNotes, walletSignIn } from "./wallet.js";
 
 const ID = "aipg";
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
+const WALLET_ENV_VAR = "AIPG_WALLET_PRIVATE_KEY";
 // AIPG_BASE_URL is for tests against a stand-in server; leave it unset otherwise.
 const BASE_URL = (process.env.AIPG_BASE_URL || "https://api.aipowergrid.io/v1").replace(/\/+$/, "");
 // Sent with every model request so the grid's operators can tell how much
@@ -114,6 +116,31 @@ export default definePluginEntry({
               ? undefined
               : "That does not look like an AI Power Grid key: it starts with grid_.",
         }),
+
+        // Second way in: no browser, the account belongs to a Base wallet.
+        {
+          id: "wallet",
+          label: "AI Power Grid wallet sign-in (Base)",
+          hint: `Signs in with a Base wallet and creates the API key; the wallet key comes from ${WALLET_ENV_VAR} or a prompt and is not stored`,
+          kind: "custom",
+          run: async (ctx) => {
+            let privateKey = String((ctx.env ?? process.env)[WALLET_ENV_VAR] || "").trim();
+            if (!privateKey) {
+              await ctx.prompter.note(
+                `This signs one sign-in message for AI Power Grid with your wallet key. The key is used in memory and not stored; only the API key the grid returns is saved. Set ${WALLET_ENV_VAR} to skip this prompt.`,
+                "AI Power Grid wallet sign-in",
+              );
+              privateKey = await ctx.prompter.text({ message: "Private key of the Base wallet (64 hex characters)", sensitive: true });
+            }
+            ctx.assertCurrent?.();
+            const result = await walletSignIn({ privateKey, baseUrl: BASE_URL, clientHeader: CLIENT_HEADER, signal: ctx.signal });
+            return {
+              profiles: [{ profileId: `${ID}:wallet`, credential: { type: "api_key", provider: ID, key: result.apiKey } }],
+              defaultModel: `${ID}/${DEFAULT_MODEL}`,
+              notes: fundingNotes(result),
+            };
+          },
+        },
       ],
 
       catalog: {

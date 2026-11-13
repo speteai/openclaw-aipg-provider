@@ -41,6 +41,19 @@ user:
 3. Store it without showing it to you, either `export AIPG_API_KEY=grid_...` in the shell that starts OpenClaw,
    or `openclaw models auth paste-api-key --provider aipg`.
 
+**Only if you hold your own Base wallet** (its private key is in `AIPG_WALLET_PRIVATE_KEY`) and the plugin is
+installed, you can sign in without a person: find the plugin folder with `openclaw plugins inspect aipg --json`
+(field `plugin.rootDir`) and run
+
+```bash
+node "<rootDir>/bin/wallet-login.js" | openclaw models auth paste-api-key --provider aipg
+```
+
+It prints the API key on stdout, which the pipe stores, and the account status on stderr. Never print the
+wallet key or the API key. A wallet account has no credit until USDC on Base is sent from that wallet to the
+grid's treasury address and claimed; the command's output says where and how much. Do not move funds without
+the user's explicit instruction.
+
 A new account may have no credit. Accounts with a verified Google sign-in get a small daily free allowance;
 otherwise the user adds credit at https://console.aipowergrid.io/dashboard/funding.
 

@@ -4,11 +4,12 @@ Unofficial, community-built. Adds [AI Power Grid](https://aipowergrid.io) to [Op
 a network of independent GPU operators behind one OpenAI-compatible API, paid per use from a prepaid balance or
 a daily free allowance.
 
-Two things in one plugin:
+Three things in one plugin:
 
 - **Image generation** for OpenClaw's `image_generate` tool, from $0.003 per image. This works next to any main
   model, and only the image prompt goes to the grid.
 - **Text models** as a model provider for the agent itself.
+- **Wallet sign-in**: an account and an API key from a Base wallet, without a browser.
 
 The model list is not written into the plugin. It is read from the grid's public status endpoint, so OpenClaw
 offers the text models that are online at that moment and large enough for an agent.
@@ -35,6 +36,42 @@ openclaw onboard --aipg-api-key grid_...                  # or during onboarding
 ```
 
 Without a key OpenClaw reports `No API key found for provider "aipg"`; with a wrong one, a sign-in error.
+
+### Signing in with a wallet instead
+
+The grid also signs you in with a wallet on Base, and this needs no browser: the plugin asks the grid for a
+sign-in message, signs it with the wallet key and sends it back. If the wallet is new to the grid, the account
+is created at that moment. The grid then issues an API key, and only that key is stored by OpenClaw. The wallet
+key is used in memory for the one signature and is not written anywhere.
+
+In a terminal:
+
+```bash
+export AIPG_WALLET_PRIVATE_KEY=0x...     # or leave it unset and answer the prompt
+openclaw models auth login --provider aipg --method wallet
+```
+
+Without a terminal (automation, an agent that holds its own wallet):
+
+```bash
+DIR="$(openclaw plugins inspect aipg --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s.slice(s.indexOf("{"))).plugin.rootDir))')"
+AIPG_WALLET_PRIVATE_KEY=0x... node "$DIR/bin/wallet-login.js" | openclaw models auth paste-api-key --provider aipg
+```
+
+`wallet-login.js` prints the API key on stdout and what a person should read on stderr.
+
+Things to know:
+
+- **Credit.** A wallet account starts with no credit and no free allowance, so requests are refused with HTTP
+  402 until it is funded: send USDC on Base from the same wallet to the treasury address the grid reports
+  (`GET /v1/account/deposits/config`), then report the transaction with `POST /v1/account/deposits/claim`
+  `{"tx_hash":"0x..."}`. The sign-in prints the address and the minimum. Credit cannot be withdrawn or moved.
+  A wallet that holds 10,000 AIPG or more gets a daily free allowance instead.
+- **Every sign-in creates another API key.** The API offers no way to list or revoke keys; that is done in the
+  Console.
+- **The wallet key is a secret that controls funds.** Use a wallet that holds only what the agent may spend.
+- This is the sign-in the grid's own Console uses. The grid's documentation describes the Console route for
+  people and does not mention this one for programs.
 
 ### Images
 
@@ -75,6 +112,11 @@ Images, through the agent's `image_generate` tool:
 
 So at the time of writing one text model is usable for agent work. The plugin lists `gpt-oss-120b` too, with a
 note in its label, because it answers plain questions.
+
+Wallet sign-in, with a wallet that was created for the test: a new account and key from nothing but the
+wallet, 0.5 USDC deposited and claimed, then paid calls; `models auth login --method wallet` in a terminal and
+`wallet-login.js` piped into `paste-api-key`, each followed by an agent turn on the new key. The signature code
+was compared with viem on 25 random keys.
 
 The install from ClawHub was checked the same way on a fresh OpenClaw home (version 0.1.0: install, model list,
 `models set`, file read). Also checked: a key stored with `models auth paste-api-key`, the messages without a key
@@ -141,6 +183,8 @@ Not covered by this plugin. The grid publishes its own
 ## How it works
 
 - `index.js` registers the provider `aipg` with API-key auth (`AIPG_API_KEY`, `--aipg-api-key`).
+- `wallet.js` implements the wallet sign-in (EIP-191 signature with `@noble/curves` and `@noble/hashes`, the
+  plugin's only dependencies); `bin/wallet-login.js` is the same without a prompt.
 - `images.js` registers the image provider: it checks which image models are online, posts to
   `/v1/images/generations` and hands the image bytes to OpenClaw.
 - The catalog reads `GET https://api.aipowergrid.io/v1/status/models` (public, no key), keeps text models that

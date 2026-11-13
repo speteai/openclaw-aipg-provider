@@ -1,6 +1,6 @@
 {
   "name": "openclaw-aipg-provider",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "AI Power Grid for OpenClaw: text models and image generation (unofficial, community-built)",
   "type": "module",
   "license": "MIT",
@@ -19,6 +19,8 @@
   "files": [
     "index.js",
     "images.js",
+    "wallet.js",
+    "bin",
     "skills",
     "openclaw.plugin.json",
     "README.md",
@@ -39,5 +41,12 @@
       "openclawVersion": "2026.11.3",
       "pluginSdkVersion": "2026.11.3"
     }
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0"
+  },
+  "bin": {
+    "aipg-wallet-login": "./bin/wallet-login.js"
   }
 }
