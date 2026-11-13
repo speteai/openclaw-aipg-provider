@@ -10,7 +10,7 @@ offers the text models that are online at that moment and large enough for an ag
 ## Install
 
 ```bash
-openclaw plugins install clawhub:speteai/openclaw-aipg-provider
+openclaw plugins install clawhub:openclaw-aipg-provider --accept-capabilities
 ```
 
 Create an API key in the [AIPG Console](https://console.aipowergrid.io/dashboard/api-key) (it starts with `grid_`)
@@ -39,6 +39,8 @@ OpenClaw 2026.11.3 on Linux against the live grid, 2026-11-13, with the embedded
 
 So at the time of writing one model is usable for agent work. The plugin lists `gpt-oss-120b` too, with a
 note in its label, because it answers plain questions.
+
+The install from ClawHub was checked the same way (version 0.1.0, file read through the installed plugin).
 
 Not tested: Windows and macOS, the gateway daemon, chat channels, the interactive onboarding prompt.
 
