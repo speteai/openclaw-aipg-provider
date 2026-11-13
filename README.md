@@ -15,7 +15,7 @@ openclaw plugins install clawhub:openclaw-aipg-provider --accept-capabilities
 
 ### Getting a key
 
-An agent cannot create the account by itself, and that is intended by the grid: a person signs in once in the
+The grid's documentation asks for a person to create the account and the key: sign in once in the
 [AIPG Console](https://console.aipowergrid.io/?callbackUrl=%2Fdashboard%2Fapi-key) with Google, GitHub or a
 wallet and creates an API key there (it starts with `grid_`). New accounts with a verified Google sign-in get a
 small daily free allowance; beyond that the account needs credit.
