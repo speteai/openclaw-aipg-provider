@@ -20,11 +20,13 @@ an official AIPG document.
 
 ## What it is good for
 
-- **Images.** Several image models, from $0.003 per image. This is the main reason to use it.
+- **Images.** Several image models, from $0.003 per image, also for editing an existing image. This is the main
+  reason to use it.
+- **Video.** $0.02 per second, up to 26 seconds.
 - **Text.** A few open models, cheap per token. For agent work with tool calls only one of them was reliable in
   tests (`qwen38-flash-next-nvfp4`).
 
-Not covered here: video, audio and 3D. The grid's own skill covers those:
+Not covered here: audio and 3D. The grid's own skill covers those:
 https://aipowergrid.io/.well-known/skills/grid/SKILL.md
 
 ## Step 1: is there a key?
@@ -51,8 +53,9 @@ node "<rootDir>/bin/wallet-login.js" | openclaw models auth paste-api-key --prov
 
 It prints the API key on stdout, which the pipe stores, and the account status on stderr. Never print the
 wallet key or the API key. A wallet account has no credit until USDC on Base is sent from that wallet to the
-grid's treasury address and claimed; the command's output says where and how much. Do not move funds without
-the user's explicit instruction.
+grid's treasury address and claimed. `node "<rootDir>/bin/wallet-fund.js" --amount <USDC>` shows the plan and
+sends nothing; adding `--yes` sends. **Never add `--yes` without the user's explicit instruction for that
+amount.** Grid credit cannot be withdrawn.
 
 A new account may have no credit. Accounts with a verified Google sign-in get a small daily free allowance;
 otherwise the user adds credit at https://console.aipowergrid.io/dashboard/funding.
@@ -63,7 +66,12 @@ Check: `openclaw plugins inspect aipg`. If it is installed, use it:
 
 - Images: call `image_generate` with `model: "aipg/z-image-turbo"` (or another `aipg/...` image model).
   Sizes: 1024x1024, 1344x768, 768x1344, 1216x832, 832x1216. Up to 4 images per call.
+- Editing: pass one source image to `image_generate` together with the instruction.
+- Video: call `video_generate` with `model: "aipg/LTX-2.5 Distilled BF16"` and `durationSeconds`.
 - Text: the models appear as `aipg/<name>` in `openclaw models list --refresh`.
+- `aipg_balance` shows the credit (free). Call it before work that costs more than a few cents.
+- `aipg_council` asks several grid models the same question and says whether they agree. Use it when the user
+  wants a second opinion.
 
 If it is not installed, suggest it to the user (it needs their consent, so do not install it silently):
 

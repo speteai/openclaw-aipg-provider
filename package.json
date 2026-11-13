@@ -1,7 +1,7 @@
 {
   "name": "openclaw-aipg-provider",
-  "version": "0.4.0",
-  "description": "AI Power Grid for OpenClaw: text models and image generation (unofficial, community-built)",
+  "version": "0.5.0",
+  "description": "AI Power Grid for OpenClaw: images, video, text models, a council of models, wallet sign-in (unofficial, community-built)",
   "type": "module",
   "license": "MIT",
   "author": "speteai",
@@ -18,8 +18,12 @@
   ],
   "files": [
     "index.js",
+    "grid.js",
     "images.js",
+    "video.js",
+    "tools.js",
     "wallet.js",
+    "tx.js",
     "bin",
     "skills",
     "openclaw.plugin.json",
@@ -47,6 +51,10 @@
     "@noble/hashes": "2.4.0"
   },
   "bin": {
-    "aipg-wallet-login": "./bin/wallet-login.js"
+    "aipg-wallet-login": "./bin/wallet-login.js",
+    "aipg-wallet-fund": "./bin/wallet-fund.js"
+  },
+  "scripts": {
+    "test": "node test/unit.mjs"
   }
 }

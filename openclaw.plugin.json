@@ -1,7 +1,7 @@
 {
   "id": "aipg",
   "name": "AI Power Grid",
-  "description": "AI Power Grid: text models and image generation (unofficial, community-built)",
+  "description": "AI Power Grid: images, video, text models and a council of models (unofficial, community-built)",
   "categories": [
     "models"
   ],
@@ -40,6 +40,13 @@
   "contracts": {
     "imageGenerationProviders": [
       "aipg"
+    ],
+    "videoGenerationProviders": [
+      "aipg"
+    ],
+    "tools": [
+      "aipg_balance",
+      "aipg_council"
     ]
   },
   "skills": [

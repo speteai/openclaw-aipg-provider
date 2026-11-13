@@ -4,12 +4,17 @@ Unofficial, community-built. Adds [AI Power Grid](https://aipowergrid.io) to [Op
 a network of independent GPU operators behind one OpenAI-compatible API, paid per use from a prepaid balance or
 a daily free allowance.
 
-Three things in one plugin:
+What the plugin adds:
 
-- **Image generation** for OpenClaw's `image_generate` tool, from $0.003 per image. This works next to any main
-  model, and only the image prompt goes to the grid.
+- **Images** for OpenClaw's `image_generate` tool, from $0.003 per image, including edits of an existing image.
+  This works next to any main model, and only the prompt (and the source image of an edit) goes to the grid.
+- **Video** for `video_generate`, $0.02 per second of video.
 - **Text models** as a model provider for the agent itself.
-- **Wallet sign-in**: an account and an API key from a Base wallet, without a browser.
+- **Two tools**: `aipg_council` puts a question to several grid models and reports whether they agree;
+  `aipg_balance` shows the credit.
+- **Wallet sign-in and funding**: an account, an API key and credit from a Base wallet, without a browser.
+
+[![test](https://github.com/speteai/openclaw-aipg-provider/actions/workflows/test.yml/badge.svg)](https://github.com/speteai/openclaw-aipg-provider/actions/workflows/test.yml)
 
 The model list is not written into the plugin. It is read from the grid's public status endpoint, so OpenClaw
 offers the text models that are online at that moment and large enough for an agent.
@@ -63,10 +68,30 @@ AIPG_WALLET_PRIVATE_KEY=0x... node "$DIR/bin/wallet-login.js" | openclaw models 
 Things to know:
 
 - **Credit.** A wallet account starts with no credit and no free allowance, so requests are refused with HTTP
-  402 until it is funded: send USDC on Base from the same wallet to the treasury address the grid reports
-  (`GET /v1/account/deposits/config`), then report the transaction with `POST /v1/account/deposits/claim`
-  `{"tx_hash":"0x..."}`. The sign-in prints the address and the minimum. Credit cannot be withdrawn or moved.
-  A wallet that holds 10,000 AIPG or more gets a daily free allowance instead.
+  402 until it is funded. A wallet that holds 10,000 AIPG or more gets a daily free allowance instead.
+
+#### Adding credit from the wallet
+
+`bin/wallet-fund.js` sends USDC on Base from the wallet to the grid's treasury and reports the transaction, so
+the credit appears on the account:
+
+```bash
+export AIPG_WALLET_PRIVATE_KEY=0x...  AIPG_API_KEY=grid_...
+node "$DIR/bin/wallet-fund.js" --amount 0.5          # shows the plan and sends nothing
+node "$DIR/bin/wallet-fund.js" --amount 0.5 --yes    # sends
+```
+
+It moves money, and grid credit cannot be withdrawn or moved to another account. So it is built to refuse:
+
+- nothing is sent without `--yes`;
+- never more than `AIPG_FUND_MAX_USDC` (default 5 USDC) in one run;
+- only if the grid confirms that the API key's account belongs to this wallet, otherwise the deposit would not
+  be credited;
+- only to the treasury address the grid reports, only USDC at its fixed contract address on Base, only when the
+  RPC endpoint (`AIPG_BASE_RPC`, default `https://mainnet.base.org`) really is Base.
+
+The wallet needs a little ETH on Base for the fee (well under a cent). There is no tool for this that the model
+can call by itself: an agent has to run the command, which OpenClaw's own approval of shell commands governs.
 - **Every sign-in creates another API key.** The API offers no way to list or revoke keys; that is done in the
   Console.
 - **The wallet key is a secret that controls funds.** Use a wallet that holds only what the agent may spend.
@@ -84,7 +109,26 @@ With the key in place, ask the agent for an image. To make the grid the default 
 
 Image models and list prices at the time of writing: `z-image-turbo` $0.003, `Krea 2 Turbo` $0.005,
 `FLUX.2 Klein 4B FP8` $0.01, `MOSS Image SFT BF16` $0.01. Sizes: 1024x1024, 1344x768, 768x1344, 1216x832,
-832x1216; up to four images per call. Image editing is not supported by this plugin.
+832x1216; up to four images per call. To edit, give the tool one source image (up to 12 MB) and say what to
+change.
+
+### Video
+
+```json5
+{ agents: { defaults: { mediaModels: { video: { primary: "aipg/LTX-2.5 Distilled BF16" } } } } }
+```
+
+Up to 26 seconds per video, from a prompt or from one source image. The plugin submits a job and asks every few
+seconds until it is done; a 2-second video took about 25 seconds. Before submitting it sets a cost ceiling of
+the list price plus a quarter, and the grid charges what the job actually cost.
+
+### The council and the balance
+
+`aipg_council` sends one question to every text model online (up to four). Each answers on its own, the largest
+one writes a joint answer and a verdict: agree, partly, differ. It costs one request per model plus one, well
+under a cent. Agreement is not proof: models can share a mistake.
+
+`aipg_balance` reports spendable credit, today's free allowance and the purchased balance. It is free.
 
 ### Text model for the agent
 
@@ -113,6 +157,18 @@ Images, through the agent's `image_generate` tool:
 So at the time of writing one text model is usable for agent work. The plugin lists `gpt-oss-120b` too, with a
 note in its label, because it answers plain questions.
 
+Added in 0.5.0, each checked against the live grid: an image edit through the agent (a lighthouse picture
+turned into a winter scene, same composition), a 2-second video with `openclaw infer video generate` (MP4,
+28 s, $0.04), the two tools through agent turns, and `wallet-fund.js` (0.1 USDC sent, claimed and credited; the
+refusals for a missing `--yes`, an amount above the limit, a key of another account and too little USDC). The
+transaction code was compared with viem on 40 random transactions. In `openclaw agent --local`, which exits
+after one turn, a video is not delivered because the process ends before the job does; with the gateway
+running this should not happen, but that was not tested.
+
+A GitHub workflow installs the packed plugin into a fresh OpenClaw on Linux, Windows and macOS and checks that
+it loads with all capabilities, tools and the skill. It makes no paid call, so on Windows and macOS the paid
+paths themselves are not exercised.
+
 Wallet sign-in, with a wallet that was created for the test: a new account and key from nothing but the
 wallet, 0.5 USDC deposited and claimed, then paid calls; `models auth login --method wallet` in a terminal and
 `wallet-login.js` piped into `paste-api-key`, each followed by an agent turn on the new key. The signature code
@@ -123,7 +179,8 @@ The install from ClawHub was checked the same way on a fresh OpenClaw home (vers
 and with a wrong key, and a session of four turns that each read a 55,000-character file. In that session the
 grid refused one request as too large; OpenClaw compacted the conversation by itself and the turn succeeded.
 
-Not tested: Windows and macOS, the gateway daemon, chat channels, the interactive onboarding prompt.
+Not tested: paid calls on Windows and macOS, the gateway daemon, chat channels, the interactive onboarding
+prompt, video from a source image.
 
 ## What it costs
 
@@ -175,7 +232,7 @@ to say about cost and privacy. The same skill is published on its own on ClawHub
 the agent through plain HTTP calls. Tested that way: the agent read the skill, generated an image with `curl`,
 saved it in the workspace and reported the price.
 
-## Video, audio and 3D
+## Audio and 3D
 
 Not covered by this plugin. The grid publishes its own
 [agent skill and MCP server](https://github.com/AIPowerGrid/grid-skill) for those.
@@ -183,6 +240,8 @@ Not covered by this plugin. The grid publishes its own
 ## How it works
 
 - `index.js` registers the provider `aipg` with API-key auth (`AIPG_API_KEY`, `--aipg-api-key`).
+- `video.js` registers the video provider on the grid's job API (`/v1/videos/jobs`), `tools.js` the two tools.
+- `tx.js` builds and signs the one kind of transaction funding needs (an EIP-1559 ERC-20 transfer).
 - `wallet.js` implements the wallet sign-in (EIP-191 signature with `@noble/curves` and `@noble/hashes`, the
   plugin's only dependencies); `bin/wallet-login.js` is the same without a prompt.
 - `images.js` registers the image provider: it checks which image models are online, posts to

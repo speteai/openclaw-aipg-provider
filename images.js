@@ -1,15 +1,17 @@
-// Image generation on AI Power Grid for OpenClaw's image_generate tool.
+// Image generation and editing on AI Power Grid for OpenClaw's image_generate tool.
 //
-// Only the image prompt goes to the grid, so this works next to any main
-// model. Plain fetch on purpose: the OpenAI-compatible image builder of the
-// plugin SDK is reserved for bundled plugins.
-import { isProviderApiKeyConfiguredAsync, resolveProviderAuthProfileApiKey } from "openclaw/plugin-sdk/provider-auth";
+// Only the image prompt (and, for an edit, the source image) goes to the grid,
+// so this works next to any main model. Plain fetch on purpose: the
+// OpenAI-compatible image builder of the plugin SDK is reserved for bundled plugins.
+import { isProviderApiKeyConfiguredAsync } from "openclaw/plugin-sdk/provider-auth";
+import { BASE_URL, CLIENT_HEADER, ENV_VAR, ID, USER_AGENT, apiKeyFor, gridError, missingKeyError, onlineModels } from "./grid.js";
 
 export const IMAGE_SIZES = ["1024x1024", "1344x768", "768x1344", "1216x832", "832x1216"];
 // The model this was tested with; the others are offered when they are online.
 export const DEFAULT_IMAGE_MODEL = "z-image-turbo";
 const KNOWN_IMAGE_MODELS = [DEFAULT_IMAGE_MODEL, "FLUX.2 Klein 4B FP8", "Krea 2 Turbo", "MOSS Image SFT BF16"];
 const MAX_IMAGE_BYTES = 30 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 12 * 1024 * 1024; // the grid's limit for an inline source image
 
 function sniff(buf) {
   if (buf.length > 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return ["image/webp", "webp"];
@@ -18,59 +20,27 @@ function sniff(buf) {
   return ["application/octet-stream", "bin"];
 }
 
-async function gridError(r) {
-  let detail = "";
-  try {
-    const j = await r.json();
-    const d = j && (j.detail ?? j.error);
-    detail = typeof d === "string" ? d : d && d.message ? d.message : JSON.stringify(d ?? j);
-  } catch {
-    // no JSON body
-  }
-  const hint =
-    r.status === 401 || r.status === 403 ? " Check the AI Power Grid API key."
-    : r.status === 402 ? " The grid account has no spendable credit for this image."
-    : r.status === 429 ? " The grid is rate-limiting this account; wait a minute."
-    : "";
-  return new Error(`AI Power Grid image generation failed (HTTP ${r.status})${detail ? ": " + detail : ""}.${hint}`);
-}
-
-export function buildImageProvider({ id, baseUrl, envVar, clientHeader, version }) {
-  const apiKeyFor = async (req) =>
-    (process.env[envVar] || "").trim() ||
-    (await resolveProviderAuthProfileApiKey({ provider: id, cfg: req.cfg, agentDir: req.agentDir, store: req.authStore }));
-
-  // Image models that have a worker right now, the wanted one first.
-  const onlineModels = async (signal) => {
-    try {
-      const r = await fetch(`${baseUrl}/status/models`, { headers: { Accept: "application/json", "User-Agent": `openclaw-aipg-provider/${version}` }, signal });
-      if (!r.ok) return null;
-      const all = await r.json();
-      return (Array.isArray(all) ? all : []).filter((m) => m && m.type === "image" && (m.count || 0) > 0).map((m) => String(m.name));
-    } catch {
-      return null; // unknown: let the request itself decide
-    }
-  };
-
+export function buildImageProvider() {
   return {
-    id,
+    id: ID,
     label: "AI Power Grid",
     defaultModel: DEFAULT_IMAGE_MODEL,
     models: [...KNOWN_IMAGE_MODELS],
-    isConfiguredAsync: async (ctx) => Boolean((process.env[envVar] || "").trim()) || (await isProviderApiKeyConfiguredAsync({ provider: id, ...ctx })),
+    isConfiguredAsync: async (ctx) => Boolean((process.env[ENV_VAR] || "").trim()) || (await isProviderApiKeyConfiguredAsync({ provider: ID, ...ctx })),
     capabilities: {
       generate: { maxCount: 4, supportsSize: true, supportsAspectRatio: false, supportsResolution: false },
-      edit: { enabled: false },
+      edit: { enabled: true, maxCount: 4, maxInputImages: 1, supportsSize: true, supportsAspectRatio: false, supportsResolution: false },
       geometry: { sizes: [...IMAGE_SIZES] },
     },
     async generateImage(req) {
-      if ((req.inputImages ?? []).length) throw new Error("AI Power Grid image editing is not supported by this plugin.");
+      const sources = req.inputImages ?? [];
+      if (sources.length > 1) throw new Error("AI Power Grid image editing takes one source image.");
       const apiKey = await apiKeyFor(req);
-      if (!apiKey) throw new Error(`AI Power Grid API key missing: set ${envVar} or run "openclaw models auth paste-api-key --provider ${id}".`);
+      if (!apiKey) throw missingKeyError();
       const signal = AbortSignal.timeout(Math.max(30_000, Math.min(Number(req.timeoutMs) || 300_000, 600_000)));
 
       let model = String(req.model || DEFAULT_IMAGE_MODEL).trim();
-      const online = await onlineModels(AbortSignal.timeout(8000));
+      const online = (await onlineModels("image"))?.map((m) => String(m.name));
       if (online && !online.some((n) => n.toLowerCase() === model.toLowerCase())) {
         // an explicitly named model that is offline is an error; the default silently moves on
         if (req.model && model !== DEFAULT_IMAGE_MODEL) {
@@ -81,16 +51,22 @@ export function buildImageProvider({ id, baseUrl, envVar, clientHeader, version 
       } else if (online) {
         model = online.find((n) => n.toLowerCase() === model.toLowerCase());
       }
-      const size = IMAGE_SIZES.includes(req.size) ? req.size : IMAGE_SIZES[0];
-      const n = Math.max(1, Math.min(Number(req.count) || 1, 4));
+      const body = { model, prompt: req.prompt, n: Math.max(1, Math.min(Number(req.count) || 1, 4)) };
+      if (IMAGE_SIZES.includes(req.size)) body.size = req.size;
+      else if (!sources.length) body.size = IMAGE_SIZES[0]; // an edit without a size keeps the source's shape
+      if (sources.length) {
+        const src = Buffer.from(sources[0].buffer);
+        if (!src.length || src.length > MAX_SOURCE_BYTES) throw new Error("The source image for AI Power Grid must be between 1 byte and 12 MB.");
+        body.image = src.toString("base64");
+      }
 
-      const r = await fetch(`${baseUrl}/images/generations`, {
+      const r = await fetch(`${BASE_URL}/images/generations`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Accept: "application/json", ...clientHeader },
-        body: JSON.stringify({ model, prompt: req.prompt, n, size }),
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", Accept: "application/json", "User-Agent": USER_AGENT, ...CLIENT_HEADER },
+        body: JSON.stringify(body),
         signal,
       });
-      if (!r.ok) throw await gridError(r);
+      if (!r.ok) throw await gridError(r, sources.length ? "image edit" : "image generation");
       const data = (await r.json())?.data;
       const images = [];
       for (const [i, item] of (Array.isArray(data) ? data : []).entries()) {

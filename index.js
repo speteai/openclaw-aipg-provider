@@ -6,19 +6,14 @@
 // written down here.
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { createProviderApiKeyAuthMethod } from "openclaw/plugin-sdk/provider-auth";
+import { BASE_URL, CLIENT_HEADER, ENV_VAR, ID, USER_AGENT } from "./grid.js";
 import { buildImageProvider } from "./images.js";
+import { buildBalanceTool, buildCouncilTool } from "./tools.js";
+import { buildVideoProvider } from "./video.js";
 import { fundingNotes, walletSignIn } from "./wallet.js";
 
-const ID = "aipg";
-const VERSION = "0.4.0";
 const WALLET_ENV_VAR = "AIPG_WALLET_PRIVATE_KEY";
-// AIPG_BASE_URL is for tests against a stand-in server; leave it unset otherwise.
-const BASE_URL = (process.env.AIPG_BASE_URL || "https://api.aipowergrid.io/v1").replace(/\/+$/, "");
-// Sent with every model request so the grid's operators can tell how much
-// traffic comes from OpenClaw. It names the client, nothing about the user.
-const CLIENT_HEADER = { "X-AIPG-Client": `openclaw-aipg-provider/${VERSION}` };
 const KEY_PAGE = "https://console.aipowergrid.io/?callbackUrl=%2Fdashboard%2Fapi-key";
-const ENV_VAR = "AIPG_API_KEY";
 const DEFAULT_MODEL = "qwen38-flash-next-nvfp4";
 
 // An agent turn carries well over 15,000 tokens of instructions and tool
@@ -69,7 +64,7 @@ async function onlineModels() {
   let list = FALLBACK;
   try {
     const r = await fetch(`${BASE_URL}/status/models`, {
-      headers: { Accept: "application/json", "User-Agent": `openclaw-aipg-provider/${VERSION}` },
+      headers: { Accept: "application/json", "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(8000),
     });
     if (r.ok) {
@@ -182,9 +177,10 @@ export default definePluginEntry({
       }),
     });
 
-    api.registerImageGenerationProvider(
-      buildImageProvider({ id: ID, baseUrl: BASE_URL, envVar: ENV_VAR, clientHeader: CLIENT_HEADER, version: VERSION }),
-    );
+    api.registerImageGenerationProvider(buildImageProvider());
+    api.registerVideoGenerationProvider(buildVideoProvider());
+    api.registerTool(buildBalanceTool(api));
+    api.registerTool(buildCouncilTool(api));
 
     api.registerModelCatalogProvider({
       provider: ID,
