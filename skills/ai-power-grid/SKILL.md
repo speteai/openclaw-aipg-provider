@@ -57,6 +57,11 @@ grid's treasury address and claimed. `node "<rootDir>/bin/wallet-fund.js" --amou
 sends nothing; adding `--yes` sends. **Never add `--yes` without the user's explicit instruction for that
 amount.** Grid credit cannot be withdrawn.
 
+A wallet that holds AIPG on Base gets free credit every day instead (10,000 AIPG or more; the tiers are in the
+credit summary under `free.holder_tiers`). `node "<rootDir>/bin/wallet-holder.js" --address <wallet>` with
+`AIPG_API_KEY` set shows the balance, the tier it reaches and what is missing for the next one; it only reads.
+The allowance starts the day after the tokens arrive. Do not buy tokens for the user; tell them what is missing.
+
 A new account may have no credit. Accounts with a verified Google sign-in get a small daily free allowance;
 otherwise the user adds credit at https://console.aipowergrid.io/dashboard/funding.
 

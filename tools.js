@@ -1,5 +1,6 @@
 // Two agent tools: what the grid account can spend, and a council of grid models.
 import { apiKeyFor, gridJson, missingKeyError, onlineModels, usd } from "./grid.js";
+import { holderTiers, tierLines } from "./holder.js";
 
 const textResult = (text, details) => ({ content: [{ type: "text", text }], details });
 
@@ -35,7 +36,7 @@ export function buildBalanceTool(api) {
   return {
     name: "aipg_balance",
     description:
-      "Show what the AI Power Grid account can spend right now: total, today's free allowance, purchased balance. Free to call. Use it before work that costs grid credit (images, video, the council) or when a grid request was refused for lack of credit.",
+      "Show what the AI Power Grid account can spend right now: total, today's free allowance, purchased balance, and what holding AIPG adds per day. Free to call. Use it before work that costs grid credit (images, video, the council) or when a grid request was refused for lack of credit.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     async execute() {
       const key = await apiKeyFor({ cfg: api.config });
@@ -49,6 +50,11 @@ export function buildBalanceTool(api) {
         );
       }
       if (c.paid && typeof c.paid === "object") lines.push(`Purchased balance: ${usd(Number(c.paid.balance_usd) || 0)}`);
+      // What holding AIPG would add, when the account gets nothing for it today.
+      const tiers = holderTiers(c.free);
+      if (tiers.length && !(Number(c.free?.holder_bonus_usd) > 0)) {
+        lines.push("No holder credit today. Holding AIPG on Base adds free credit each day, from the day after the tokens arrive:", ...tierLines(tiers).map((l) => "  " + l));
+      }
       if (c.charging_enabled === false) lines.push("Billing is switched off for this account.");
       return textResult(lines.join("\n"), {
         spendable_usd: Number(c.total_spendable_usd) || 0,

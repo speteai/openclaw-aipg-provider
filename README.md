@@ -68,7 +68,8 @@ AIPG_WALLET_PRIVATE_KEY=0x... node "$DIR/bin/wallet-login.js" | openclaw models 
 Things to know:
 
 - **Credit.** A wallet account starts with no credit and no free allowance, so requests are refused with HTTP
-  402 until it is funded. A wallet that holds 10,000 AIPG or more gets a daily free allowance instead.
+  402 until it is funded. A wallet that holds 10,000 AIPG or more gets a daily free allowance instead (see
+  "Running on the holder allowance" below).
 
 #### Adding credit from the wallet
 
@@ -92,6 +93,39 @@ It moves money, and grid credit cannot be withdrawn or moved to another account.
 
 The wallet needs a little ETH on Base for the fee (well under a cent). There is no tool for this that the model
 can call by itself: an agent has to run the command, which OpenClaw's own approval of shell commands governs.
+#### Running on the holder allowance
+
+An agent whose wallet holds AIPG on Base gets free credit every day without anyone paying in. The grid reports
+the tiers with the credit summary; when this was written they were:
+
+| AIPG in the sign-in wallet | Free credit per day | Images at $0.003 |
+| --- | --- | --- |
+| 10,000 | $0.10 | 33 |
+| 100,000 | $0.50 | 166 |
+| 1,000,000 | $2.00 | 666 |
+
+`bin/wallet-holder.js` shows where a wallet stands. It only reads: one balance query on Base and the account's
+credit summary. It signs nothing and sends nothing.
+
+```bash
+AIPG_API_KEY=grid_... node "$DIR/bin/wallet-holder.js" --address 0x...
+```
+
+```
+Wallet 0x... holds 12,000 AIPG on Base.
+That reaches the 10,000 AIPG tier: $0.10 of free credit a day.
+Next tier: 100,000 AIPG for $0.50 a day, 88,000 AIPG more than now.
+```
+
+The `aipg_balance` tool lists the tiers too when the account gets no holder credit that day.
+
+- The grid counts the balance at the last Base block before midnight UTC, so the first allowance comes the day
+  after the tokens arrive. Each wallet counts on its own; balances are not added together.
+- The network grants a limited total per day, so the allowance is not guaranteed.
+- The tokens stay in the wallet and keep their own price risk. The plugin has no command that buys AIPG: put
+  them into the agent's wallet yourself. The market is small; a large purchase moves the price.
+- The grid can change or end the tiers.
+
 - **Every sign-in creates another API key.** The API offers no way to list or revoke keys; that is done in the
   Console.
 - **The wallet key is a secret that controls funds.** Use a wallet that holds only what the agent may spend.

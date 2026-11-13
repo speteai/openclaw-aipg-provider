@@ -54,4 +54,28 @@ assert.throws(() => assertSignInMessage("please sign " + addr, { address: addr, 
 for (const ok of ["https://media.aipg.art/image/x/0.webp", "https://cdn.aipowergrid.io/a.png"]) assert.ok(gridMediaUrl(ok), ok);
 for (const bad of ["http://media.aipg.art/a.webp", "https://aipg.art.evil.example/a.webp", "https://evilaipg.art/a", "https://127.0.0.1/a", "https://media.aipg.art:8443/a",
   "https://user:pw@media.aipg.art/a", "file:///etc/passwd", "https://169.254.169.254/latest/meta-data", "not a url", "https://aipg.art/a"]) assert.equal(gridMediaUrl(bad), null, bad);
+// holder tiers
+{
+  const { aipgBalance, balanceOfData, holderReport, holderStanding, holderTiers } = await import("../holder.js");
+  const free = { holder_bonus_usd: 0, holder_tiers: [{ min_aipg: 1000000, daily_usd: 2 }, { min_aipg: 10000, daily_usd: 0.1 }, { min_aipg: 100000, daily_usd: 0.5 }, { min_aipg: 0, daily_usd: 9 }, null] };
+  const tiers = holderTiers(free);
+  assert.deepEqual(tiers.map((t) => t.min), [10000, 100000, 1000000]);
+  assert.deepEqual(holderTiers(null), []);
+  assert.deepEqual(holderStanding(tiers, 0), { reached: null, next: { min: 10000, usd: 0.1, missing: 10000 } });
+  assert.equal(holderStanding(tiers, 9999).reached, null);
+  assert.equal(holderStanding(tiers, 10000).reached.usd, 0.1);
+  assert.equal(holderStanding(tiers, 250000).next.missing, 750000);
+  assert.equal(holderStanding(tiers, 5e6).next, null);
+  assert.equal(balanceOfData("0x00000000000000000000000000000000000000Ab"), "0x70a08231" + "0".repeat(62) + "ab");
+  assert.throws(() => balanceOfData("0x12"));
+  const rpc = (hex) => async (method, params) => { assert.equal(method, "eth_call"); assert.equal(params[0].to, "0xa1c0decafe3e9bf06a5f29b7015cd373a9854608"); return hex; };
+  assert.equal(await aipgBalance(rpc("0x" + (12345n * 10n ** 18n + 5n).toString(16).padStart(64, "0")), addr), 12345);
+  assert.equal(await aipgBalance(rpc("0x"), addr), 0);
+  await assert.rejects(aipgBalance(rpc(null), addr));
+  const text = holderReport({ address: addr, balance: 12000, free }).join("\n");
+  assert.match(text, /reaches the 10,000 AIPG tier: \$0\.10/);
+  assert.match(text, /Next tier: 100,000 AIPG for \$0\.50 a day, 88,000 AIPG more/);
+  assert.match(holderReport({ address: addr, balance: 12000, free: { ...free, holder_bonus_usd: 0.1 } }).join("\n"), /received \$0\.10/);
+  assert.match(holderReport({ address: addr, balance: 5, free: {} }).join("\n"), /no holder tiers/);
+}
 console.log("unit: ok");

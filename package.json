@@ -1,6 +1,6 @@
 {
   "name": "openclaw-aipg-provider",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "AI Power Grid for OpenClaw: images, video, text models, a council of models, wallet sign-in (unofficial, community-built)",
   "type": "module",
   "license": "MIT",
@@ -25,6 +25,7 @@
     "tools.js",
     "wallet.js",
     "tx.js",
+    "holder.js",
     "bin",
     "skills",
     "openclaw.plugin.json",
@@ -53,7 +54,8 @@
   },
   "bin": {
     "aipg-wallet-login": "./bin/wallet-login.js",
-    "aipg-wallet-fund": "./bin/wallet-fund.js"
+    "aipg-wallet-fund": "./bin/wallet-fund.js",
+    "aipg-wallet-holder": "./bin/wallet-holder.js"
   },
   "scripts": {
     "test": "node test/unit.mjs"
