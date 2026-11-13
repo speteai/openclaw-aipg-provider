@@ -125,6 +125,14 @@ Model requests carry one extra header, `X-AIPG-Client: openclaw-aipg-provider/<v
 operators see how much traffic comes from OpenClaw. It names the client and nothing about you, and the plugin
 itself collects nothing and reports to nobody else.
 
+## The skill
+
+The plugin ships a skill, `ai-power-grid`, that tells the agent how to use the grid: how the user gets a key
+(the agent never asks for it in the chat), which image and text models to call, what the errors mean and what
+to say about cost and privacy. The same skill is published on its own on ClawHub; without the plugin it guides
+the agent through plain HTTP calls. Tested that way: the agent read the skill, generated an image with `curl`,
+saved it in the workspace and reported the price.
+
 ## Video, audio and 3D
 
 Not covered by this plugin. The grid publishes its own

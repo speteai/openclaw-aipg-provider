@@ -19,6 +19,7 @@
   "files": [
     "index.js",
     "images.js",
+    "skills",
     "openclaw.plugin.json",
     "README.md",
     "LICENSE"
