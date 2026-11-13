@@ -7,6 +7,7 @@
 // is used in memory for the one signature and is never written anywhere.
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
+import { SIGN_IN, assertSignInMessage } from "./safe.js";
 
 const hex = (b) => Buffer.from(b).toString("hex");
 
@@ -62,11 +63,10 @@ export async function walletSignIn({ privateKey, baseUrl, clientHeader = {}, lab
   // The grid only accepts sign-in messages for its own sites; the Console is the one this flow belongs to.
   const challenge = await call(baseUrl, "/accounts/wallet/challenge", {
     method: "POST", headers, signal,
-    body: { address, domain: "console.aipowergrid.io", uri: "https://console.aipowergrid.io", chain_id: 8453 },
+    body: { address, domain: SIGN_IN.domain, uri: SIGN_IN.uri, chain_id: SIGN_IN.chainId },
   });
-  if (typeof challenge?.message !== "string" || !challenge.message.includes(address)) {
-    throw new Error("AI Power Grid returned a sign-in message that does not name this wallet; nothing was signed.");
-  }
+  // Sign only the exact sign-in text; anything else in the reply is refused.
+  assertSignInMessage(challenge?.message, { address, nonce: challenge?.nonce });
   const signature = personalSign(priv, challenge.message);
   priv.fill(0);
   const session = await call(baseUrl, "/accounts/wallet/verify", {

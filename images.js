@@ -5,6 +5,7 @@
 // OpenAI-compatible image builder of the plugin SDK is reserved for bundled plugins.
 import { isProviderApiKeyConfiguredAsync } from "openclaw/plugin-sdk/provider-auth";
 import { BASE_URL, CLIENT_HEADER, ENV_VAR, ID, USER_AGENT, apiKeyFor, gridError, missingKeyError, onlineModels } from "./grid.js";
+import { fetchGridMedia } from "./safe.js";
 
 export const IMAGE_SIZES = ["1024x1024", "1344x768", "768x1344", "1216x832", "832x1216"];
 // The model this was tested with; the others are offered when they are online.
@@ -69,17 +70,19 @@ export function buildImageProvider() {
       if (!r.ok) throw await gridError(r, sources.length ? "image edit" : "image generation");
       const data = (await r.json())?.data;
       const images = [];
-      for (const [i, item] of (Array.isArray(data) ? data : []).entries()) {
+      // never more items than were asked for, whatever the reply holds
+      for (const [i, item] of (Array.isArray(data) ? data : []).slice(0, body.n).entries()) {
         let buffer = null;
         if (typeof item?.b64_json === "string" && item.b64_json) {
+          if (item.b64_json.length > Math.ceil(MAX_IMAGE_BYTES / 3) * 4) continue; // too large before decoding
           buffer = Buffer.from(item.b64_json, "base64");
-        } else if (typeof item?.url === "string" && item.url.startsWith("https://")) {
-          const d = await fetch(item.url, { signal });
-          if (!d.ok) throw new Error(`AI Power Grid image download failed (HTTP ${d.status}).`);
-          buffer = Buffer.from(await d.arrayBuffer());
+        } else if (typeof item?.url === "string") {
+          // only from the grid's own media hosts, without redirects, with a byte limit
+          buffer = await fetchGridMedia(item.url, { maxBytes: MAX_IMAGE_BYTES, signal });
         }
         if (!buffer || !buffer.length || buffer.length > MAX_IMAGE_BYTES) continue;
         const [mimeType, ext] = sniff(buffer);
+        if (ext === "bin") continue; // not a WebP, PNG or JPEG: do not hand it on
         images.push({ buffer, mimeType, fileName: `aipg-${model.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${i + 1}.${ext}` });
       }
       if (!images.length) throw new Error("AI Power Grid returned no image data.");

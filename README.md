@@ -207,6 +207,18 @@ passes the live prices to OpenClaw.
 - **Availability.** Models come and go with the operators that are online. A model missing from the list is
   offline or too small.
 
+## What the plugin refuses
+
+- **Media links.** Images are downloaded only over https from the grid's own storage hosts (`*.aipg.art`,
+  `*.aipowergrid.io`), without following redirects, only when the host resolves to public addresses, and never
+  more than 30 MB or more items than were asked for. A file that is not WebP, PNG or JPEG is dropped. Video links
+  are handed to OpenClaw only if they point to those hosts.
+- **Sign-in messages.** The wallet signs only the exact EIP-4361 text of this sign-in: the Console's domain and
+  address, this wallet, Base, version 1, the nonce the same reply announced, issued within the last five
+  minutes and valid for at most fifteen, and no further lines. Anything else is refused before signing. The
+  API does not accept a nonce chosen by the client, so that part of the check is limited to consistency.
+- Use a wallet that holds only what the agent may spend.
+
 ## Privacy
 
 For images, the grid sees the image prompt and nothing else. For the text provider it is different: whatever
@@ -242,6 +254,7 @@ Not covered by this plugin. The grid publishes its own
 - `index.js` registers the provider `aipg` with API-key auth (`AIPG_API_KEY`, `--aipg-api-key`).
 - `video.js` registers the video provider on the grid's job API (`/v1/videos/jobs`), `tools.js` the two tools.
 - `tx.js` builds and signs the one kind of transaction funding needs (an EIP-1559 ERC-20 transfer).
+- `safe.js` holds the two checks described under *What the plugin refuses*.
 - `wallet.js` implements the wallet sign-in (EIP-191 signature with `@noble/curves` and `@noble/hashes`, the
   plugin's only dependencies); `bin/wallet-login.js` is the same without a prompt.
 - `images.js` registers the image provider: it checks which image models are online, posts to

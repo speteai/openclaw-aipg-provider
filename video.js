@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import { isProviderApiKeyConfiguredAsync } from "openclaw/plugin-sdk/provider-auth";
 import { ENV_VAR, ID, apiKeyFor, gridJson, missingKeyError, onlineModels } from "./grid.js";
+import { gridMediaUrl } from "./safe.js";
 
 export const DEFAULT_VIDEO_MODEL = "LTX-2.5 Distilled BF16";
 const MAX_SECONDS = 26; // the grid's limit (625 frames at 24 fps)
@@ -81,8 +82,9 @@ export function buildVideoProvider() {
       if (job.state !== "completed" || !Array.isArray(media) || !media.length) {
         throw new Error(`AI Power Grid closed video job ${jobId} without a result; nothing should be charged for it.`);
       }
-      const videos = media.filter((m) => typeof m?.url === "string" && m.url.startsWith("https://")).map((m, i) => ({
-        url: m.url, mimeType: "video/mp4", fileName: `aipg-video-${i + 1}.mp4`,
+      // hand on only links to the grid's own media hosts, and no more than one video
+      const videos = media.map((m) => gridMediaUrl(m?.url)).filter(Boolean).slice(0, 1).map((u, i) => ({
+        url: u.href, mimeType: "video/mp4", fileName: `aipg-video-${i + 1}.mp4`,
       }));
       if (!videos.length) throw new Error("AI Power Grid returned no video.");
       return {

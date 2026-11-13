@@ -2,7 +2,7 @@
 import { resolveProviderAuthProfileApiKey } from "openclaw/plugin-sdk/provider-auth";
 
 export const ID = "aipg";
-export const VERSION = "0.5.0";
+export const VERSION = "0.5.1";
 export const ENV_VAR = "AIPG_API_KEY";
 // AIPG_BASE_URL is for tests against a stand-in server; leave it unset otherwise.
 export const BASE_URL = (process.env.AIPG_BASE_URL || "https://api.aipowergrid.io/v1").replace(/\/+$/, "");
