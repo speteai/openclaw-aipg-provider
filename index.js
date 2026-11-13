@@ -6,9 +6,10 @@
 // written down here.
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { createProviderApiKeyAuthMethod } from "openclaw/plugin-sdk/provider-auth";
+import { buildImageProvider } from "./images.js";
 
 const ID = "aipg";
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 // AIPG_BASE_URL is for tests against a stand-in server; leave it unset otherwise.
 const BASE_URL = (process.env.AIPG_BASE_URL || "https://api.aipowergrid.io/v1").replace(/\/+$/, "");
 // Sent with every model request so the grid's operators can tell how much
@@ -153,6 +154,10 @@ export default definePluginEntry({
         maxTokens: MAX_OUTPUT,
       }),
     });
+
+    api.registerImageGenerationProvider(
+      buildImageProvider({ id: ID, baseUrl: BASE_URL, envVar: ENV_VAR, clientHeader: CLIENT_HEADER, version: VERSION }),
+    );
 
     api.registerModelCatalogProvider({
       provider: ID,

@@ -1,8 +1,14 @@
-# AI Power Grid provider for OpenClaw
+# AI Power Grid for OpenClaw
 
-Unofficial, community-built. Adds [AI Power Grid](https://aipowergrid.io) as a model provider to
-[OpenClaw](https://openclaw.ai): a network of independent GPU operators behind one OpenAI-compatible API,
-paid per token from a prepaid balance or a daily free allowance.
+Unofficial, community-built. Adds [AI Power Grid](https://aipowergrid.io) to [OpenClaw](https://openclaw.ai):
+a network of independent GPU operators behind one OpenAI-compatible API, paid per use from a prepaid balance or
+a daily free allowance.
+
+Two things in one plugin:
+
+- **Image generation** for OpenClaw's `image_generate` tool, from $0.003 per image. This works next to any main
+  model, and only the image prompt goes to the grid.
+- **Text models** as a model provider for the agent itself.
 
 The model list is not written into the plugin. It is read from the grid's public status endpoint, so OpenClaw
 offers the text models that are online at that moment and large enough for an agent.
@@ -30,7 +36,20 @@ openclaw onboard --aipg-api-key grid_...                  # or during onboarding
 
 Without a key OpenClaw reports `No API key found for provider "aipg"`; with a wrong one, a sign-in error.
 
-Then choose the model:
+### Images
+
+With the key in place, ask the agent for an image. To make the grid the default for images:
+
+```json5
+// ~/.openclaw/openclaw.json
+{ agents: { defaults: { mediaModels: { image: { primary: "aipg/z-image-turbo" } } } } }
+```
+
+Image models and list prices at the time of writing: `z-image-turbo` $0.003, `Krea 2 Turbo` $0.005,
+`FLUX.2 Klein 4B FP8` $0.01, `MOSS Image SFT BF16` $0.01. Sizes: 1024x1024, 1344x768, 768x1344, 1216x832,
+832x1216; up to four images per call. Image editing is not supported by this plugin.
+
+### Text model for the agent
 
 ```bash
 openclaw models set aipg/qwen38-flash-next-nvfp4
@@ -46,7 +65,15 @@ OpenClaw 2026.11.3 on Linux against the live grid, 2026-11-13, with the embedded
 | `qwen38-flash-next-nvfp4` | correct | correct | correct (5 model calls, 59 s) |
 | `gpt-oss-120b` | correct | failed in 4 of 4 runs (tool call) | not tried |
 
-So at the time of writing one model is usable for agent work. The plugin lists `gpt-oss-120b` too, with a
+Images, through the agent's `image_generate` tool:
+
+| Request | Result |
+| --- | --- |
+| One image, default model (`z-image-turbo`) | 1024x1024 WebP saved by OpenClaw, $0.003 |
+| Two images, `FLUX.2 Klein 4B FP8`, 1344x768 | two WebP files, $0.02 |
+| A model name that does not exist | no image, nothing charged for it |
+
+So at the time of writing one text model is usable for agent work. The plugin lists `gpt-oss-120b` too, with a
 note in its label, because it answers plain questions.
 
 The install from ClawHub was checked the same way on a fresh OpenClaw home (version 0.1.0: install, model list,
@@ -83,7 +110,8 @@ passes the live prices to OpenClaw.
 
 ## Privacy
 
-Whatever OpenClaw sends to its model goes to the grid and is processed in plain text on a computer run by an
+For images, the grid sees the image prompt and nothing else. For the text provider it is different: whatever
+OpenClaw sends to its model goes to the grid and is processed in plain text on a computer run by an
 independent operator. With the grid as the main model, that includes your messages, files the agent reads and
 tool results. Do not use it for content that must stay confidential.
 
@@ -97,14 +125,16 @@ Model requests carry one extra header, `X-AIPG-Client: openclaw-aipg-provider/<v
 operators see how much traffic comes from OpenClaw. It names the client and nothing about you, and the plugin
 itself collects nothing and reports to nobody else.
 
-## Images, video and other grid features
+## Video, audio and 3D
 
-This plugin covers text models for the agent itself. For image, video, audio and 3D generation the grid
-publishes its own [agent skill and MCP server](https://github.com/AIPowerGrid/grid-skill).
+Not covered by this plugin. The grid publishes its own
+[agent skill and MCP server](https://github.com/AIPowerGrid/grid-skill) for those.
 
 ## How it works
 
 - `index.js` registers the provider `aipg` with API-key auth (`AIPG_API_KEY`, `--aipg-api-key`).
+- `images.js` registers the image provider: it checks which image models are online, posts to
+  `/v1/images/generations` and hands the image bytes to OpenClaw.
 - The catalog reads `GET https://api.aipowergrid.io/v1/status/models` (public, no key), keeps text models that
   are online with a context of at least 32,000 tokens, and maps their published prices. The result is cached
   for one minute. If the grid cannot be reached, the tested default model is offered.

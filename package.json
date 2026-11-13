@@ -1,17 +1,42 @@
 {
   "name": "openclaw-aipg-provider",
-  "version": "0.2.0",
-  "description": "AI Power Grid as a model provider for OpenClaw (unofficial, community-built)",
+  "version": "0.3.0",
+  "description": "AI Power Grid for OpenClaw: text models and image generation (unofficial, community-built)",
   "type": "module",
   "license": "MIT",
   "author": "speteai",
-  "repository": { "type": "git", "url": "git+https://github.com/speteai/openclaw-aipg-provider.git" },
-  "keywords": ["openclaw", "openclaw-plugin", "provider", "aipg", "ai-power-grid"],
-  "files": ["index.js", "openclaw.plugin.json", "README.md", "LICENSE"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/speteai/openclaw-aipg-provider.git"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "provider",
+    "aipg",
+    "ai-power-grid"
+  ],
+  "files": [
+    "index.js",
+    "images.js",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
   "openclaw": {
-    "extensions": ["./index.js"],
-    "providers": ["aipg"],
-    "compat": { "pluginApi": ">=2026.11.3", "minGatewayVersion": "2026.11.3" },
-    "build": { "openclawVersion": "2026.11.3", "pluginSdkVersion": "2026.11.3" }
+    "extensions": [
+      "./index.js"
+    ],
+    "providers": [
+      "aipg"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.11.3",
+      "minGatewayVersion": "2026.11.3"
+    },
+    "build": {
+      "openclawVersion": "2026.11.3",
+      "pluginSdkVersion": "2026.11.3"
+    }
   }
 }
