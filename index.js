@@ -8,7 +8,13 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { createProviderApiKeyAuthMethod } from "openclaw/plugin-sdk/provider-auth";
 
 const ID = "aipg";
-const BASE_URL = "https://api.aipowergrid.io/v1";
+const VERSION = "0.2.0";
+// AIPG_BASE_URL is for tests against a stand-in server; leave it unset otherwise.
+const BASE_URL = (process.env.AIPG_BASE_URL || "https://api.aipowergrid.io/v1").replace(/\/+$/, "");
+// Sent with every model request so the grid's operators can tell how much
+// traffic comes from OpenClaw. It names the client, nothing about the user.
+const CLIENT_HEADER = { "X-AIPG-Client": `openclaw-aipg-provider/${VERSION}` };
+const KEY_PAGE = "https://console.aipowergrid.io/?callbackUrl=%2Fdashboard%2Fapi-key";
 const ENV_VAR = "AIPG_API_KEY";
 const DEFAULT_MODEL = "qwen38-flash-next-nvfp4";
 
@@ -18,7 +24,10 @@ const MIN_CONTEXT = 32000;
 // The grid refuses a request above 200,000 characters (HTTP 413), whatever
 // the model could hold. Advertising a window just below that makes OpenClaw
 // compact the conversation before the grid turns it away.
-const MAX_ADVERTISED_CONTEXT = 45000;
+// (Measured: with 45,000 one long turn was still refused once and OpenClaw
+// recovered by compacting; 40,000 leaves more room for text that packs more
+// tokens into fewer characters.)
+const MAX_ADVERTISED_CONTEXT = 40000;
 const MAX_OUTPUT = 8192;
 
 const FALLBACK = [
@@ -57,7 +66,7 @@ async function onlineModels() {
   let list = FALLBACK;
   try {
     const r = await fetch(`${BASE_URL}/status/models`, {
-      headers: { Accept: "application/json", "User-Agent": "openclaw-aipg-provider" },
+      headers: { Accept: "application/json", "User-Agent": `openclaw-aipg-provider/${VERSION}` },
       signal: AbortSignal.timeout(8000),
     });
     if (r.ok) {
@@ -93,7 +102,7 @@ export default definePluginEntry({
           providerId: ID,
           methodId: "api-key",
           label: "AI Power Grid API key",
-          hint: "Create one at console.aipowergrid.io/dashboard/api-key (it starts with grid_)",
+          hint: `A person has to sign in once to create it: ${KEY_PAGE} (the key starts with grid_)`,
           optionKey: "aipgApiKey",
           flagName: "--aipg-api-key",
           envVar: ENV_VAR,
@@ -120,6 +129,13 @@ export default definePluginEntry({
             },
           };
         },
+      },
+
+      wrapStreamFn: (ctx) => {
+        if (!ctx.streamFn) return undefined;
+        const inner = ctx.streamFn;
+        return (model, context, options) =>
+          inner(model, context, { ...options, headers: { ...options?.headers, ...CLIENT_HEADER } });
       },
 
       // The set of models changes with the workers that are online; accept a
