@@ -1,6 +1,6 @@
 ---
 name: ai-power-grid
-description: "Generate images cheaply (from $0.003 each) and run text models on AI Power Grid (AIPG), a decentralized GPU network with an OpenAI-compatible API and pay-per-use credit. Use when the user asks for an image and no other image provider is set up, mentions AIPG / AI Power Grid / the grid, or wants a low-cost pay-per-use model."
+description: "Generate images cheaply (from $0.003 each) and run text models on AI Power Grid (AIPG), a decentralized GPU network with an OpenAI-compatible API and pay-per-use credit. Use when the user asks for an image and no other image provider is set up, mentions AIPG or AI Power Grid, or wants a low-cost pay-per-use model."
 homepage: https://github.com/speteai/openclaw-aipg-provider
 metadata:
   {
@@ -26,8 +26,7 @@ an official AIPG document.
 - **Text.** A few open models, cheap per token. For agent work with tool calls only one of them was reliable in
   tests (`qwen38-flash-next-nvfp4`).
 
-Not covered here: audio and 3D. The grid's own skill covers those:
-https://aipowergrid.io/.well-known/skills/grid/SKILL.md
+Not covered here: audio and 3D. See the documentation at https://aipowergrid.io/docs.
 
 ## Step 1: is there a key?
 
@@ -43,24 +42,9 @@ user:
 3. Store it without showing it to you, either `export AIPG_API_KEY=grid_...` in the shell that starts OpenClaw,
    or `openclaw models auth paste-api-key --provider aipg`.
 
-**Only if you hold your own Base wallet** (its private key is in `AIPG_WALLET_PRIVATE_KEY`) and the plugin is
-installed, you can sign in without a person: find the plugin folder with `openclaw plugins inspect aipg --json`
-(field `plugin.rootDir`) and run
-
-```bash
-node "<rootDir>/bin/wallet-login.js" | openclaw models auth paste-api-key --provider aipg
-```
-
-It prints the API key on stdout, which the pipe stores, and the account status on stderr. Never print the
-wallet key or the API key. A wallet account has no credit until USDC on Base is sent from that wallet to the
-grid's treasury address and claimed. `node "<rootDir>/bin/wallet-fund.js" --amount <USDC>` shows the plan and
-sends nothing; adding `--yes` sends. **Never add `--yes` without the user's explicit instruction for that
-amount.** Grid credit cannot be withdrawn.
-
-A wallet that holds AIPG on Base gets free credit every day instead (10,000 AIPG or more; the tiers are in the
-credit summary under `free.holder_tiers`). `node "<rootDir>/bin/wallet-holder.js" --address <wallet>` with
-`AIPG_API_KEY` set shows the balance, the tier it reaches and what is missing for the next one; it only reads.
-The allowance starts the day after the tokens arrive. Do not buy tokens for the user; tell them what is missing.
+An account whose sign-in wallet holds 10,000 AIPG or more on Base gets extra free credit each day; the tiers
+are in the credit summary under `free.holder_tiers`. Signing in or paying with a wallet is not part of this
+skill: the plugin's README describes it, and it is the user's decision and the user's command to run.
 
 A new account may have no credit. Accounts with a verified Google sign-in get a small daily free allowance;
 otherwise the user adds credit at https://console.aipowergrid.io/dashboard/funding.
