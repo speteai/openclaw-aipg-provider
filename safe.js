@@ -68,14 +68,17 @@ export async function fetchGridMedia(value, { maxBytes, signal }) {
   return Buffer.concat(chunks);
 }
 
-const SIGN_IN_DOMAIN = "console.aipowergrid.io";
-const SIGN_IN_URI = "https://console.aipowergrid.io";
+// The grid accepts sign-in messages only for domains it lists. For a program
+// that is `localhost`: its documentation says a script should not claim to be
+// the Console.
+const SIGN_IN_DOMAIN = "localhost";
+const SIGN_IN_URI = "http://localhost";
 const SIGN_IN_STATEMENT = "Sign in to AI Power Grid.";
 const BASE_CHAIN_ID = 8453;
 export const SIGN_IN = { domain: SIGN_IN_DOMAIN, uri: SIGN_IN_URI, chainId: BASE_CHAIN_ID };
 
 // A wallet must only sign the one message this sign-in consists of: an
-// EIP-4361 text for the grid's Console, this wallet, Base, a nonce and a short
+// EIP-4361 text for a program's sign-in (`localhost`), this wallet, Base, a nonce and a short
 // validity, and nothing else. Anything that differs is refused, so a tampered
 // reply cannot get a signature for something other than this sign-in.
 export function assertSignInMessage(message, { address, nonce, now = Date.now() }) {
@@ -85,7 +88,7 @@ export function assertSignInMessage(message, { address, nonce, now = Date.now() 
   if (typeof message !== "string" || message.length > 1000) refuse("is not a sign-in text");
   const lines = message.split("\n");
   if (lines.length !== 11) refuse("has an unexpected shape");
-  if (lines[0] !== `${SIGN_IN_DOMAIN} wants you to sign in with your Ethereum account:`) refuse("is not for the grid's Console");
+  if (lines[0] !== `${SIGN_IN_DOMAIN} wants you to sign in with your Ethereum account:`) refuse("is not the sign-in for a program");
   if (lines[1] !== address) refuse("names another wallet");
   if (lines[2] !== "" || lines[4] !== "") refuse("has an unexpected shape");
   if (lines[3] !== SIGN_IN_STATEMENT) refuse("asks for something other than a sign-in");

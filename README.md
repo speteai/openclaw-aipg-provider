@@ -95,8 +95,9 @@ can call by itself: an agent has to run the command, which OpenClaw's own approv
 - **Every sign-in creates another API key.** The API offers no way to list or revoke keys; that is done in the
   Console.
 - **The wallet key is a secret that controls funds.** Use a wallet that holds only what the agent may spend.
-- This is the sign-in the grid's own Console uses. The grid's documentation describes the Console route for
-  people and does not mention this one for programs.
+- The grid supports this for agents that hold their own wallet. Its documentation page for it
+  ("Agents with their own wallet") was in review when this was written. As that page asks, the plugin signs in
+  with the domain `localhost` and does not present itself as the Console.
 
 ### Images
 
@@ -213,7 +214,7 @@ passes the live prices to OpenClaw.
   `*.aipowergrid.io`), without following redirects, only when the host resolves to public addresses, and never
   more than 30 MB or more items than were asked for. A file that is not WebP, PNG or JPEG is dropped. Video links
   are handed to OpenClaw only if they point to those hosts.
-- **Sign-in messages.** The wallet signs only the exact EIP-4361 text of this sign-in: the Console's domain and
+- **Sign-in messages.** The wallet signs only the exact EIP-4361 text of this sign-in: the domain `localhost` and its
   address, this wallet, Base, version 1, the nonce the same reply announced, issued within the last five
   minutes and valid for at most fifteen, and no further lines. Anything else is refused before signing. The
   API does not accept a nonce chosen by the client, so that part of the check is limited to consistency.

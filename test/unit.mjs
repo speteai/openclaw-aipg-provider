@@ -26,9 +26,9 @@ for (const bad of ["", "0x12", "zz".repeat(32)]) assert.throws(() => parsePrivat
 // what a wallet may sign
 const addr = v.address, now = Date.parse("2026-11-13T09:33:40Z");
 const msg = (o = {}) => [
-  o.first ?? "console.aipowergrid.io wants you to sign in with your Ethereum account:",
+  o.first ?? "localhost wants you to sign in with your Ethereum account:",
   o.address ?? addr, "", o.statement ?? "Sign in to AI Power Grid.", "",
-  o.uri ?? "URI: https://console.aipowergrid.io", "Version: 1", o.chain ?? "Chain ID: 8453",
+  o.uri ?? "URI: http://localhost", "Version: 1", o.chain ?? "Chain ID: 8453",
   "Nonce: " + (o.nonce ?? "39d85cd150fb4d3d9ac234048a2bbafd"),
   "Issued At: " + (o.issued ?? "2026-11-13T09:33:31Z"), "Expiration Time: " + (o.expires ?? "2026-11-13T09:38:31Z"),
   ...(o.extra ?? []),
@@ -37,6 +37,7 @@ const check = (o, nonce = "39d85cd150fb4d3d9ac234048a2bbafd") => assertSignInMes
 check({});
 for (const [name, o, nonce] of [
   ["another site", { first: "evil.example wants you to sign in with your Ethereum account:" }],
+  ["the Console's sign-in", { first: "console.aipowergrid.io wants you to sign in with your Ethereum account:", uri: "URI: https://console.aipowergrid.io" }],
   ["another wallet", { address: "0x000000000000000000000000000000000000dEaD" }],
   ["another statement", { statement: "Approve spending of all tokens." }],
   ["another uri", { uri: "URI: https://evil.example" }],

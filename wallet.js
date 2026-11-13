@@ -1,6 +1,6 @@
 // Sign in to AI Power Grid with a Base wallet instead of a browser.
 //
-// The grid's wallet sign-in (the one its Console uses) is plain HTTP: ask for
+// The grid's wallet sign-in is plain HTTP: ask for
 // a message, sign it with the wallet key, send the signature back. The grid
 // then creates the account if the wallet is new and lets the fresh session
 // create an API key. Only that API key is stored by OpenClaw; the wallet key
@@ -60,7 +60,7 @@ export async function walletSignIn({ privateKey, baseUrl, clientHeader = {}, lab
   const priv = parsePrivateKey(privateKey);
   const address = addressOf(priv);
   const headers = { "User-Agent": "openclaw-aipg-provider", ...clientHeader };
-  // The grid only accepts sign-in messages for its own sites; the Console is the one this flow belongs to.
+  // The grid lists the domains it accepts; `localhost` is the one for programs (see safe.js).
   const challenge = await call(baseUrl, "/accounts/wallet/challenge", {
     method: "POST", headers, signal,
     body: { address, domain: SIGN_IN.domain, uri: SIGN_IN.uri, chain_id: SIGN_IN.chainId },
