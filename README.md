@@ -129,9 +129,9 @@ The `aipg_balance` tool lists the tiers too when the account gets no holder cred
 - **Every sign-in creates another API key.** The API offers no way to list or revoke keys; that is done in the
   Console.
 - **The wallet key is a secret that controls funds.** Use a wallet that holds only what the agent may spend.
-- The grid supports this for agents that hold their own wallet. Its documentation page for it
-  ("Agents with their own wallet") was in review when this was written. As that page asks, the plugin signs in
-  with the domain `localhost` and does not present itself as the Console.
+- The grid supports this for agents that hold their own wallet and documents it:
+  [Agents with their own wallet](https://aipowergrid.io/docs/agent-wallet-accounts). As that page asks, the
+  plugin signs in with the domain `localhost` and does not present itself as the Console.
 
 ### Images
 
