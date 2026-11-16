@@ -179,7 +179,7 @@ OpenClaw 2026.11.3 on Linux against the live grid, 2026-11-13, with the embedded
 | Model | Plain question | Read a file | Fix a Python file and run it |
 | --- | --- | --- | --- |
 | `qwen38-flash-next-nvfp4` | correct | correct | correct (5 model calls, 59 s) |
-| `gpt-oss-120b` | correct | failed in 4 of 4 runs (tool call) | not tried |
+| `gpt-oss-120b` | correct | failed in 4 of 4 runs (tool call); fixed on the grid on 2026-11-16 | see below |
 
 Images, through the agent's `image_generate` tool:
 
@@ -189,8 +189,11 @@ Images, through the agent's `image_generate` tool:
 | Two images, `FLUX.2 Klein 4B FP8`, 1344x768 | two WebP files, $0.02 |
 | A model name that does not exist | no image, nothing charged for it |
 
-So at the time of writing one text model is usable for agent work. The plugin lists `gpt-oss-120b` too, with a
-note in its label, because it answers plain questions.
+`gpt-oss-120b` failed on tool calls until 2026-11-16: the grid returned them inside the reasoning text
+([aipg-documentation#70](https://github.com/AIPowerGrid/aipg-documentation/issues/70)). The AIPG team changed
+the worker that evening. Afterwards a multi-step task (write a script, run it, write the result to a file)
+ran through with `gpt-oss-120b` in 3 of 3 runs, 54 to 69 s each. Both text models are usable for agent work
+now; plugin 0.6.2 no longer marks `gpt-oss-120b` in the model list.
 
 Added in 0.5.0, each checked against the live grid: an image edit through the agent (a lighthouse picture
 turned into a winter scene, same composition), a 2-second video with `openclaw infer video generate` (MP4,

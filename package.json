@@ -1,6 +1,6 @@
 {
   "name": "openclaw-aipg-provider",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "AI Power Grid for OpenClaw: images, video, text models, a council of models, wallet sign-in (unofficial, community-built)",
   "type": "module",
   "license": "MIT",
