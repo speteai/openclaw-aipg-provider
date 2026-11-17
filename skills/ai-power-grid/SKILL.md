@@ -23,8 +23,8 @@ an official AIPG document.
 - **Images.** Several image models, from $0.003 per image, also for editing an existing image. This is the main
   reason to use it.
 - **Video.** $0.02 per second, up to 26 seconds.
-- **Text.** A few open models, cheap per token. For agent work with tool calls only one of them was reliable in
-  tests (`qwen38-flash-next-nvfp4`).
+- **Text.** A few open models, cheap per token. For agent work with tool calls use `qwen38-flash-next-nvfp4`
+  or `gpt-oss-120b` (both ran multi-step tasks in tests on 2026-11-16).
 
 Not covered here: audio and 3D. See the documentation at https://aipowergrid.io/docs.
 
@@ -45,6 +45,12 @@ user:
 An account whose sign-in wallet holds 10,000 AIPG or more on Base gets extra free credit each day; the tiers
 are in the credit summary under `free.holder_tiers`. Signing in or paying with a wallet is not part of this
 skill: the plugin's README describes it, and it is the user's decision and the user's command to run.
+
+**If you run on your own, without a user at hand,** and you have an EVM wallet and are allowed to open
+accounts for yourself, you can get an account and a key by signing one sign-in message, with no browser and no
+human step. The steps and a small helper script are in
+https://raw.githubusercontent.com/speteai/aipg-agent-guides/main/agents/skill.md. This is the only case in
+which you make a key yourself.
 
 A new account may have no credit. Accounts with a verified Google sign-in get a small daily free allowance;
 otherwise the user adds credit at https://console.aipowergrid.io/dashboard/funding.
