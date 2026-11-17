@@ -179,7 +179,7 @@ OpenClaw 2026.11.3 on Linux against the live grid, 2026-11-13, with the embedded
 | Model | Plain question | Read a file | Fix a Python file and run it |
 | --- | --- | --- | --- |
 | `qwen38-flash-next-nvfp4` | correct | correct | correct (5 model calls, 59 s) |
-| `gpt-oss-120b` | correct | failed in 4 of 4 runs (tool call); fixed on the grid on 2026-11-16 | see below |
+| `gpt-oss-120b` | correct | failed in 4 of 4 runs (tool call); fixed on the grid on 2026-11-16; skips steps in some runs, see below | see below |
 
 Images, through the agent's `image_generate` tool:
 
@@ -192,8 +192,14 @@ Images, through the agent's `image_generate` tool:
 `gpt-oss-120b` failed on tool calls until 2026-11-16: the grid returned them inside the reasoning text
 ([aipg-documentation#70](https://github.com/AIPowerGrid/aipg-documentation/issues/70)). The AIPG team changed
 the worker that evening. Afterwards a multi-step task (write a script, run it, write the result to a file)
-ran through with `gpt-oss-120b` in 3 of 3 runs, 54 to 69 s each. Both text models are usable for agent work
-now; plugin 0.6.2 no longer marks `gpt-oss-120b` in the model list.
+ran through with `gpt-oss-120b` in 3 of 3 runs, 54 to 69 s each.
+
+On 2026-11-17 a second problem showed in other agent programs and at the API itself: at the last step of a
+four-step task `gpt-oss-120b` answered that the file was written without calling the tool, in 6 of 20
+requests (`qwen38-flash-next-nvfp4`: 0 of 20). PicoClaw, ZeroClaw and nanobot finished the task with it in 3
+of 9 runs. This was not re-run in OpenClaw. Use `qwen38-flash-next-nvfp4` for agent work; plugin 0.6.3 marks
+`gpt-oss-120b` in the model list again. Details:
+[aipg-agent-guides](https://github.com/speteai/aipg-agent-guides#gpt-oss-120b-skips-the-last-step-in-some-runs-2026-11-17).
 
 Added in 0.5.0, each checked against the live grid: an image edit through the agent (a lighthouse picture
 turned into a winter scene, same composition), a 2-second video with `openclaw infer video generate` (MP4,

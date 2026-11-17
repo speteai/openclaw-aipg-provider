@@ -23,8 +23,9 @@ an official AIPG document.
 - **Images.** Several image models, from $0.003 per image, also for editing an existing image. This is the main
   reason to use it.
 - **Video.** $0.02 per second, up to 26 seconds.
-- **Text.** A few open models, cheap per token. For agent work with tool calls use `qwen38-flash-next-nvfp4`
-  or `gpt-oss-120b` (both ran multi-step tasks in tests on 2026-11-16).
+- **Text.** A few open models, cheap per token. For agent work with tool calls use `qwen38-flash-next-nvfp4`.
+  `gpt-oss-120b` returns tool calls too, but in tests on 2026-11-17 it sometimes reported a step as done
+  without calling the tool.
 
 Not covered here: audio and 3D. See the documentation at https://aipowergrid.io/docs.
 

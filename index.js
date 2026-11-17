@@ -34,8 +34,11 @@ const FALLBACK = [
 
 // What tests with OpenClaw showed for single models (see README). Shown in the
 // model's label so the picker says it before a turn fails.
-// Empty since 0.6.2: the grid fixed gpt-oss-120b's tool calls on 2026-11-16.
-const NOTES = {};
+// 0.6.3: gpt-oss-120b returns tool calls since the grid's fix of 2026-11-16, but in tests on
+// 2026-11-17 it sometimes reported a step as done without calling the tool.
+const NOTES = {
+  "gpt-oss-120b": "in tests it sometimes skipped a tool step",
+};
 
 function toModel(m) {
   const p = m.pricing || {};
