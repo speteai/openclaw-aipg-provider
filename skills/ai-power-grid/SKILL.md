@@ -62,6 +62,9 @@ Check: `openclaw plugins inspect aipg`. If it is installed, use it:
 - `aipg_balance` shows the credit (free). Call it before work that costs more than a few cents.
 - `aipg_council` asks several grid models the same question and says whether they agree. Use it when the user
   wants a second opinion.
+- `aipg_batch` (plugin 0.7.0 and later) runs one instruction over many inputs on a grid model under a cost cap:
+  translating a list, summarising texts one by one, tagging entries. Use it for routine work a small model can
+  do; the inputs are processed in plain text, so leave out secrets and personal data.
 
 If it is not installed, suggest it to the user (it needs their consent, so do not install it silently):
 

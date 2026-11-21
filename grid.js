@@ -2,7 +2,7 @@
 import { resolveProviderAuthProfileApiKey } from "openclaw/plugin-sdk/provider-auth";
 
 export const ID = "aipg";
-export const VERSION = "0.6.4";
+export const VERSION = "0.7.0";
 export const ENV_VAR = "AIPG_API_KEY";
 // AIPG_BASE_URL is for tests against a stand-in server; leave it unset otherwise.
 export const BASE_URL = (process.env.AIPG_BASE_URL || "https://api.aipowergrid.io/v1").replace(/\/+$/, "");
@@ -40,7 +40,9 @@ export async function gridError(r, what) {
     : r.status === 402 ? " The grid account has no spendable credit for this."
     : r.status === 429 ? " The grid is rate-limiting this account; wait a minute."
     : "";
-  return new Error(`AI Power Grid ${what} failed (HTTP ${r.status})${detail && detail !== "null" ? ": " + detail : ""}.${hint}`);
+  const err = new Error(`AI Power Grid ${what} failed (HTTP ${r.status})${detail && detail !== "null" ? ": " + detail : ""}.${hint}`);
+  err.status = r.status;
+  return err;
 }
 
 export async function gridJson(path, { key, method = "GET", body, signal, headers = {} } = {}, what = "request") {

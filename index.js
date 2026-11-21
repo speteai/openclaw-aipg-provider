@@ -8,7 +8,7 @@ import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { createProviderApiKeyAuthMethod } from "openclaw/plugin-sdk/provider-auth";
 import { BASE_URL, CLIENT_HEADER, ENV_VAR, ID, USER_AGENT } from "./grid.js";
 import { buildImageProvider } from "./images.js";
-import { buildBalanceTool, buildCouncilTool } from "./tools.js";
+import { buildBalanceTool, buildBatchTool, buildCouncilTool } from "./tools.js";
 import { buildVideoProvider } from "./video.js";
 import { fundingNotes, walletSignIn } from "./wallet.js";
 
@@ -183,6 +183,7 @@ export default definePluginEntry({
     api.registerVideoGenerationProvider(buildVideoProvider());
     api.registerTool(buildBalanceTool(api));
     api.registerTool(buildCouncilTool(api));
+    api.registerTool(buildBatchTool(api));
 
     api.registerModelCatalogProvider({
       provider: ID,

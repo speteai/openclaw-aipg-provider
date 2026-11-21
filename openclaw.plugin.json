@@ -1,7 +1,7 @@
 {
   "id": "aipg",
   "name": "AI Power Grid",
-  "description": "AI Power Grid: images, video, text models and a council of models (unofficial, community-built)",
+  "description": "AI Power Grid: images, video, text models, a council of models and batches of small tasks (unofficial, community-built)",
   "categories": [
     "models"
   ],
@@ -46,7 +46,8 @@
     ],
     "tools": [
       "aipg_balance",
-      "aipg_council"
+      "aipg_council",
+      "aipg_batch"
     ]
   },
   "skills": [

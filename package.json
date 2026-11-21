@@ -1,7 +1,7 @@
 {
   "name": "openclaw-aipg-provider",
-  "version": "0.6.4",
-  "description": "AI Power Grid for OpenClaw: images, video, text models, a council of models, wallet sign-in (unofficial, community-built)",
+  "version": "0.7.0",
+  "description": "AI Power Grid for OpenClaw: images, video, text models, a council of models, batches of small tasks, wallet sign-in (unofficial, community-built)",
   "type": "module",
   "license": "MIT",
   "author": "speteai",
@@ -23,6 +23,7 @@
     "images.js",
     "video.js",
     "tools.js",
+    "batch.js",
     "wallet.js",
     "tx.js",
     "holder.js",
@@ -44,8 +45,8 @@
       "minGatewayVersion": "2026.11.3"
     },
     "build": {
-      "openclawVersion": "2026.11.3",
-      "pluginSdkVersion": "2026.11.3"
+      "openclawVersion": "2026.11.6",
+      "pluginSdkVersion": "2026.11.6"
     }
   },
   "dependencies": {

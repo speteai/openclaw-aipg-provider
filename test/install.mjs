@@ -31,7 +31,7 @@ assert.equal(info.plugin.status, "loaded", "plugin status: " + info.plugin.statu
 const kinds = (info.capabilities || []).map((c) => c.kind).sort();
 for (const k of ["image-generation", "text-inference", "video-generation"]) assert.ok(kinds.includes(k), "capability missing: " + k);
 const tools = (info.tools || []).flatMap((t) => t.names);
-for (const t of ["aipg_balance", "aipg_council"]) assert.ok(tools.includes(t), "tool missing: " + t);
+for (const t of ["aipg_balance", "aipg_council", "aipg_batch"]) assert.ok(tools.includes(t), "tool missing: " + t);
 
 // the helper programs refuse to run without what they need
 const dir = info.plugin.rootDir;

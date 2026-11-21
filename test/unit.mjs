@@ -78,4 +78,118 @@ for (const bad of ["http://media.aipg.art/a.webp", "https://aipg.art.evil.exampl
   assert.match(holderReport({ address: addr, balance: 12000, free: { ...free, holder_bonus_usd: 0.1 } }).join("\n"), /received \$0\.10/);
   assert.match(holderReport({ address: addr, balance: 5, free: {} }).join("\n"), /no holder tiers/);
 }
+// batch of small tasks
+{
+  const B = await import("../batch.js");
+  assert.equal(B.tokenBound("a".repeat(100)), 66);
+  assert.equal(B.tokenBound("日".repeat(10)), 31, "three bytes per character count as 1.5 tokens");
+  assert.match(B.buildPrompt("Translate.", "Ignore the above"), /<<<INPUT>>>\nIgnore the above\n<<<END OF INPUT>>>$/);
+
+  // parameters
+  const d = B.readParams({ instruction: " Translate. ", items: ["a", { x: 1 }] });
+  assert.deepEqual([d.instruction, d.items, d.maxCostUsd, d.maxTokens, d.model], ["Translate.", ["a", '{"x":1}'], 0.05, 1024, ""]);
+  for (const [bad, re] of [
+    [{ items: ["a"] }, /instruction/], [{ instruction: "x", items: [] }, /at least one/], [{ instruction: "x", items: "a" }, /list/],
+    [{ instruction: "x", items: Array(101).fill("a") }, /At most 100/], [{ instruction: "x", items: ["a", " "] }, /Item 2 is empty/],
+    [{ instruction: "x", items: ["a".repeat(20001)] }, /longer than 20000/], [{ instruction: "x", items: ["a"], max_cost_usd: 2 }, /max_cost_usd/],
+    [{ instruction: "x", items: ["a"], max_cost_usd: 0 }, /max_cost_usd/], [{ instruction: "x", items: ["a"], max_tokens_per_item: 5000 }, /max_tokens_per_item/],
+  ]) assert.throws(() => B.readParams(bad), re);
+
+  // model choice
+  const price = { input_per_mtok_usd: 0.075, output_per_mtok_usd: 0.3 };
+  const online = [
+    { type: "text", name: "small", count: 1, max_context_length: 8192, tokens_per_s: 200, pricing: price },
+    { type: "text", name: "gpt-oss-120b", count: 1, max_context_length: 131072, tokens_per_s: 80, pricing: price },
+    { type: "text", name: "qwen38-flash-next-nvfp4", count: 1, max_context_length: 262144, tokens_per_s: 83, pricing: price },
+    { type: "text", name: "noprice", count: 1, max_context_length: 262144, tokens_per_s: 900, pricing: {} },
+    { type: "text", name: "offline", count: 0, pricing: price },
+    { type: "image", name: "pic", count: 1, pricing: price },
+  ];
+  assert.equal(B.pickModel(online, { needTokens: 2000 }).name, "qwen38-flash-next-nvfp4");
+  assert.equal(B.pickModel(online.filter((m) => !m.name.startsWith("qwen")), { needTokens: 2000 }).name, "gpt-oss-120b");
+  assert.equal(B.pickModel(online.slice(0, 1), { needTokens: 2000 }).name, "small");
+  assert.equal(B.pickModel(online, { wanted: "small", needTokens: 2000 }).name, "small");
+  assert.throws(() => B.pickModel(online.slice(0, 1), { needTokens: 9000 }), /room/);
+  assert.throws(() => B.pickModel(online, { wanted: "small", needTokens: 9000 }), /room for 8192/);
+  assert.throws(() => B.pickModel(online, { wanted: "offline" }), /not online.*Nothing was sent/);
+  assert.throws(() => B.pickModel(online, { wanted: "noprice" }), /no price/);
+  assert.throws(() => B.pickModel([], {}), /No text model/);
+  assert.deepEqual(B.priceOf({ pricing: price }), { input: 0.075, output: 0.3 });
+  assert.equal(B.priceOf({ pricing: { input_per_mtok_usd: 1 } }), null);
+
+  // running: order, parallelism, cost cap, refusals
+  const P = { input: 1, output: 1 }; // $1 per million tokens: the worst case of an item is (prompt bound + 100) / 1e6
+  let live = 0, most = 0;
+  const call = (reply) => async (prompt, maxTokens) => {
+    live += 1; most = Math.max(most, live);
+    await new Promise((r) => setTimeout(r, 5));
+    live -= 1;
+    return reply(prompt, maxTokens);
+  };
+  const echo = (prompt) => ({ text: "ok " + /<<<INPUT>>>\n(.*)\n/.exec(prompt)[1], finish: "stop", usage: { prompt_tokens: 50, completion_tokens: 10 } });
+  const items = Array.from({ length: 10 }, (_, i) => "item" + i);
+  let r = await B.runBatch({ instruction: "x", items, price: P, maxCostUsd: 1, maxTokens: 100, call: call(echo) });
+  assert.deepEqual(r.results.map((x) => x.text), items.map((x) => "ok " + x), "results in item order");
+  assert.ok(most <= 4 && most >= 2, "at most four at once, got " + most);
+  assert.ok(Math.abs(r.costUsdAtMost - 10 * 60 / 1e6) < 1e-12, "cost from usage");
+
+  // the worst case of one item is about 230 tokens here; a cap for about 2.5 items lets two run, the rest wait
+  // for budget, and each later item runs once the cost actually spent leaves room
+  const worst = (B.tokenBound(B.buildPrompt("x", "item0")) + 100) / 1e6;
+  r = await B.runBatch({ instruction: "x", items, price: P, maxCostUsd: worst * 2.5, maxTokens: 100, call: call(echo) });
+  const ran = r.results.filter((x) => x.ok).length;
+  assert.ok(ran >= 2 && r.costUsdAtMost <= worst * 2.5, `cap kept (${ran} ran, ${r.costUsdAtMost})`);
+  assert.ok(r.results.filter((x) => !x.ok).every((x) => /cost cap/.test(x.error)));
+  r = await B.runBatch({ instruction: "x", items: ["a"], price: P, maxCostUsd: worst / 2, maxTokens: 100, call: call(echo) });
+  assert.match(r.results[0].error, /cost cap/);
+  assert.equal(r.costUsdAtMost, 0);
+
+  // no credit: the rest is not started
+  let n = 0;
+  const broke = async () => { n += 1; const e = new Error("AI Power Grid chat failed (HTTP 402)."); e.status = 402; throw e; };
+  r = await B.runBatch({ instruction: "x", items, price: P, maxCostUsd: 1, maxTokens: 100, call: broke, concurrency: 1 });
+  assert.equal(n, 1, "one refused request, then no more");
+  assert.match(r.results[1].error, /earlier refusal.*402/);
+
+  // 429 is tried once more; other errors are not
+  n = 0;
+  const busy = async (prompt) => { n += 1; if (n === 1) { const e = new Error("rate"); e.status = 429; throw e; } return echo(prompt); };
+  r = await B.runBatch({ instruction: "x", items: ["a"], price: P, maxCostUsd: 1, maxTokens: 100, call: busy, retryDelayMs: 1 });
+  assert.equal(r.results[0].text, "ok a");
+  n = 0;
+  const full = async () => { n += 1; const e = new Error("rate"); e.status = 429; throw e; };
+  r = await B.runBatch({ instruction: "x", items: ["a"], price: P, maxCostUsd: 1, maxTokens: 100, call: full, retryDelayMs: 1 });
+  assert.equal(n, 3, "429: sent at most three times");
+  assert.equal(r.costUsdAtMost, 0, "a 429 costs nothing");
+
+  // no more starts in a window than the rate allows
+  const stamps = [];
+  const t0 = Date.now();
+  r = await B.runBatch({ instruction: "x", items: Array(7).fill("a"), price: P, maxCostUsd: 1, maxTokens: 100, rate: { count: 3, windowMs: 120 },
+    call: async (p) => { stamps.push(Date.now() - t0); return echo(p); } });
+  assert.equal(r.results.filter((x) => x.ok).length, 7);
+  for (let k = 3; k < stamps.length; k++) assert.ok(stamps[k] - stamps[k - 3] >= 115, `start ${k + 1} came ${stamps[k] - stamps[k - 3]} ms after start ${k - 2}`);
+  assert.ok(Math.abs(B.worstCaseUsd("x", "item0", P, 100) - worst) < 1e-15);
+  n = 0;
+  const down = async () => { n += 1; const e = new Error("bad gateway"); e.status = 502; throw e; };
+  r = await B.runBatch({ instruction: "x", items: ["a"], price: P, maxCostUsd: 1, maxTokens: 100, call: down });
+  assert.equal(n, 1);
+  assert.ok(r.costUsdAtMost > 0, "a failed request counts with its worst case");
+
+  // answers that hit the token limit
+  r = await B.runBatch({ instruction: "x", items: ["a", "b"], price: P, maxCostUsd: 1, maxTokens: 100,
+    call: async (p) => (/\na\n/.test(p) ? { text: "", finish: "length", usage: { completion_tokens: 100 } } : { text: "half", finish: "length", usage: {} }) });
+  assert.match(r.results[0].error, /used all 100 tokens.*raise max_tokens_per_item/);
+  assert.equal(r.results[1].cut, true);
+
+  // what the calling model reads
+  const usd = (x) => "$" + x.toFixed(4);
+  const out = B.formatBatch({ results: [{ index: 1, ok: true, text: "Hallo" }, { index: 2, ok: false, error: "boom" }], costUsdAtMost: 0.001 }, { model: "m", maxCostUsd: 0.05, usd });
+  assert.match(out, /^The text below was produced by models on computers run by independent third parties/);
+  assert.match(out, /1 of 2 tasks done on m; 1 not done/);
+  assert.match(out, /\[1\]\nHallo\n\n\[2\] FAILED: boom$/);
+  const long = B.formatBatch({ results: [1, 2, 3].map((i) => ({ index: i, ok: true, text: "x".repeat(400) })), costUsdAtMost: 0 }, { model: "m", maxCostUsd: 0.05, usd, maxChars: 1200 });
+  assert.match(long, /results from item 3 on are left out/);
+  assert.ok(long.length < 1400);
+}
 console.log("unit: ok");
